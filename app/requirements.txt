@@ -1,2 +1,6 @@
 psycopg2-binary
 tensorflow==2.13.0
+pandas
+numpy
+boto3
+ydf

@@ -17,6 +17,10 @@ capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
 resolve_image_repos = true
+stack_name = "CosmicRescueStack"
+s3_prefix = "CosmicRescueStack"
+region = "us-east-2"
+parameter_overrides = "DBUser=\"postgres\" DBPassword=\"7F3x2D5fa29Emd\" DBHost=\"mlflow.cgtdf7yvdtuk.us-east-2.rds.amazonaws.com\" DBPort=\"5432\" DBName=\"postgres\""
 
 [default.package.parameters]
 resolve_s3 = true

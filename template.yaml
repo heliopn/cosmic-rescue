@@ -24,10 +24,29 @@ Resources:
           Properties:
             Path: /classify_digit
             Method: post
+      Environment:  # Define environment variables here
+          Variables:
+            DB_USER: !Ref DBUser
+            DB_PASSWORD: !Ref DBPassword
+            DB_HOST: !Ref DBHost
+            DB_PORT: !Ref DBPort
+            DB_DATABASE: !Ref DBName
     Metadata:
       Dockerfile: Dockerfile
       DockerContext: ./app
       DockerTag: python3.11-v1
+
+Parameters:
+  DBUser:
+    Type: String
+  DBPassword:
+    Type: String
+  DBHost:
+    Type: String
+  DBPort:
+    Type: String
+  DBName:
+    Type: String
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
