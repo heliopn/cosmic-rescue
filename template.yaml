@@ -22,7 +22,7 @@ Resources:
         Inference:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /classify_digit
+            Path: /passenger
             Method: post
       Environment:  # Define environment variables here
           Variables:
@@ -54,7 +54,7 @@ Outputs:
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   InferenceApi:
     Description: "API Gateway endpoint URL for Prod stage for Inference function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/classify_digit/"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/passenger/"
   InferenceFunction:
     Description: "Inference Lambda Function ARN"
     Value: !GetAtt InferenceFunction.Arn

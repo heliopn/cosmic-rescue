@@ -1,14 +1,20 @@
+import os
 import ydf
 import json
 import boto3
 import logging
 import psycopg2
 import pandas as pd
-from postgresql_utils import get_cur, insert_predictions
 
-if "model" not in os.listdir("./"):
-    return {"error": "Model not found"}
-rf = ydf.load_model("model")
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+def load_model():
+    model_file = './model'
+    logging.info(f'[INFO] - Loading model... {os.listdir()}')
+    return ydf.load_model(model_file)
+
+rf = load_model()
 
 def get_secret(secret_name):
     client = boto3.client('secretsmanager', region_name='your_region')
@@ -46,11 +52,10 @@ def predict_transported(df_person):#Has to reivei a df with the infos from the d
     # Get the predictions for testdata
     predictions = rf.predict(df_person)
     n_predictions = (predictions > 0.5).astype(bool).squeeze()
-    return True
+    return n_predictions
 
-# PostgreSQL Connection and Operations
+
 def postgres_operations(passenger_id):
-
     ### Reading environment variable
     host = os.getenv("DB_HOST")
     user = os.getenv("DB_USER")
@@ -68,7 +73,7 @@ def postgres_operations(passenger_id):
     cursor = conn.cursor()
 
     # Check if PassengerId exists in the database
-    cursor.execute("SELECT * FROM space_titanic_passengers WHERE passengerid = %s", (passenger_id))
+    cursor.execute("SELECT * FROM space_titanic_passengers WHERE passengerid = %s", (passenger_id,))
     passenger_data = cursor.fetchone()
 
     logging.info('Select: %s', passenger_data)
@@ -77,38 +82,47 @@ def postgres_operations(passenger_id):
         # PassengerId is invalid, return error message
         return {'error': 'Invalid PassengerId'}
 
+    df_passenger = pd.DataFrame([passenger_data], columns=["passengerid","homeplanet","cryosleep","cabin","destination","age","vip","roomservice","foodcourt","shoppingmall","spa","vrdeck","name","transported","predicted"])
+    
     # Extract Transported column value
-    transported_value = passenger_data['transported']
+    transported_value = df_passenger['transported']
+    predicted_value = df_passenger['predicted']
 
-    if transported_value is None:
+    if transported_value[0] is None or predicted_value[0]:
         # Predict Transported value using the model
-        predicted_transported = predict_transported(passenger_data)
+        predicted_transported = predict_transported(df_passenger)
+        predicted_transported = predicted_transported.tolist()
 
         # Store predicted value in PostgreSQL
         cursor.execute("UPDATE space_titanic_passengers SET transported = %s, predicted = %s WHERE passengerid = %s",
                        (predicted_transported, True, passenger_id))
         conn.commit()
-
+        conn.close()
         # Send message stating it's a prediction
         # Use AWS SNS, SQS, or any messaging service for sending the message
-
-        return {'prediction': f'Transported = {predict_transported}'}
+        return {'prediction': f'Transported = {predicted_transported}'}
     else:
-        # Passenger was transported
-        return {'confirmation': 'Passenger was transported'}
+        value = 'was' if transported_value[0] else "wasnt"
 
-    cursor.close()
-    conn.close()
+        conn.close()
+        # Passenger was transported
+        return {'confirmation': f'Passenger {value} transported'}
+
 
 def lambda_handler(event, context):
-    logging.basicConfig(level=logging.INFO)
     try:
         # Extract PassengerId from the API input
+        if 'body' not in event or not event['body']:
+            raise ValueError('Invalid or empty request body')
+
         body = json.loads(event['body'])
         passenger_id = body.get('passengerid')
 
         # Get the raw posted JSON
         logging.info('Received event raw input: %s', body)
+
+        if not passenger_id:
+            raise ValueError('Passenger ID not found in the request')
 
         # Perform operations in PostgreSQL
         result = postgres_operations(passenger_id)
